@@ -1,0 +1,4 @@
+MoPedS1-5.R generate the data input, run, and analyse the pedigree
+MoPedS_simulate_pedigree.R Takes the input data and simulates a pedigree and fits a model to it so that the accuracy of the pedigree can be estimated.
+restriction_checks.R is used to ensure that the `MasterBayes`restrictions and variables are correctly defined.
+/colony contains input data for COLONY2
