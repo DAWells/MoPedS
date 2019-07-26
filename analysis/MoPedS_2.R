@@ -398,8 +398,10 @@ stop("This check for the 3 sexes is untested\nand needs completing\n\n!!!!")
 
 lhdata_individuals<-filter(lhdata,indiv%in%id)
 
+#Each individual is given a sex, it overcomes the main problem of individuals with mixed sexes like "M" and "".
 table_of_sexes<-summarise(group_by(lhdata_individuals,indiv),sexes=paste(unique(sex),collapse=""))
 
+#Which individuals do not have F M or P.
 non_FMP<-table_of_sexes[!table_of_sexes$sexes %in% c("F","M","P"),]
 
 if(nrow(non_FMP)>0){
