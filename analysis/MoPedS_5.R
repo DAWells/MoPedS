@@ -1,3 +1,4 @@
+#190728
 #Extract the COLONY results and combine them with the MasterBayes pedigree.
 
 
@@ -163,8 +164,8 @@ ped_mar_mb$sire_prob<-modeP(mb$P,marginal=T)$prob.male
 
 ##############################
 #                            #
-#      Use probability       #
-#         threshold          #
+#         Joint MB           #
+#   probability threshold    #
 #                            #
 ##############################
 
@@ -173,9 +174,17 @@ ped_mar_mb$sire_prob<-modeP(mb$P,marginal=T)$prob.male
 threshold<-0.8
 #Start with the MasterBayes joint pedigree.
 ped<-ped_joint_mb
+
 #Dams and sires with a joint probability below the threshold are set to NA.
 low_joint_prob <- ped$joint_prob < threshold
 ped[low_joint_prob, c("dam","sire")]<-NA
+
+##############################
+#                            #
+#      Marginal MB           #
+#   probability threshold    #
+#                            #
+##############################
 
 #Although both parents were not confidently assigned we may be able to assign one parent confidently.
 #Add the marginal probabilities.
@@ -210,19 +219,13 @@ assign_marginal_parents<-function(row){
 
 ped[,c('dam','sire')]<-t(apply(ped,1, assign_marginal_parents))
 
-####
-#Checking that colony full sibs have the same parents in masterbayes too
-####
-#Full Sibling Index
-ped$fsindex<-fsindex$index[match(ped$id, fsindex$id)]
-
-#Grouping by full sibling index, all offspring should have the same parents, this includes NAs because if the true parent was sampled they should be assigned for all offspring by MasterBayes. Immigrants and founders are not assigned parents by MasterBayes, but if all their full siblings have the same parents 
-summarise(group_by(ped, fsindex),length(unique(dam)))
 ##############################
 #                            #
 #    Identifying siblings    #
 #                            #
 ##############################
+
+#The sibships should only be added relevant to the masterbayes assignments. Therefore sibships must be assessed before the joint and marginal COLONY parents are added.
 
 #So far niether COLONY pedigree incorporates information about full siblings which is the principal reason we use COLONY, to infer relatedness when parents are unsampled or cannot be assigned, as is the case with immigrants.
 
@@ -246,6 +249,164 @@ colfsf<-cbind(colfsf[,1:3],Family)
 fsindex<-data.frame(index=rep(colfsf$FullSibshipIndex, fs_size), iprob=rep(colfsf$Prob.Inc.., fs_size), id=unlist(Family_list))
 
 
+#Checking that COLONY full sibs have the same parents in masterbayes too.
+
+#Full Sibling Index
+ped$fsindex<-fsindex$index[match(ped$id, fsindex$id)]
+#Confidence in the full sibling group
+ped$fs_iprob <- fsindex$iprob[match(ped$id, fsindex$id)]
+
+#Grouping by full sibling index, all offspring should have the same parents, this includes NAs because if the true parent was sampled they should be assigned for all offspring by MasterBayes.
+#Immigrants and founders are not assigned parents by MasterBayes so they can be NA, but if all their full siblings have the same parents then they can be given those parents.
+#Note, at this point the immigrants and founders included in the COLONY analysis are not included in the MB analysis.
+#This is only true where the full sibling iprob > threshold
+
+fs_consistancy <- summarise(group_by(filter(ped, fs_iprob>threshold), fsindex),
+	confident_sibship_size = n(),
+	fs_iprob = unique(fs_iprob),
+	n_MB_dams = length(unique(dam)),
+	n_MB_sires = length(unique(sire)),
+	#Number of unique MasterBayes assigned parent pairs.
+	n_MB_pp = length(unique(paste(dam,sire))))
+
+#Do all offspring have the same parent pair within fullsibships?
+#Essentially does MasterBayes agree that they are full siblings?
+fs_consistancy$mb_consistant <- fs_consistancy$n_MB_pp == 1
+
+##############################
+#                            #
+#       Joint COLONY         #
+#   probability threshold    #
+#                            #
+##############################
+
+#Add Joint COLONY parents above the threshold
+
+ped$joint_col_prob<-ped_joint_col$joint_prob[match(ped$id, ped_joint_col$id)]
+
+#Function which assigns the joint parent pair from COLONY if both parents are still unassigned and $joint_col_prob exceeds the threshold
+assign_joint_col_parents <- function(row){
+	#If both parents are NA check the joint_col_probabilty against the threshold
+	if(is.na(row['dam']) & is.na(row['sire'])){
+		#If probability is not NA and over the threshold
+		if(row['joint_col_prob'] > threshold & !is.na(row['joint_col_prob'])){
+			#Joint parent pair
+			jpp<-ped_joint_col[ped_joint_col$id == as.character(row['id']),]
+			dam <- as.character(jpp$dam)
+			sire <- as.character(jpp$sire)
+		}else{
+			dam<-NA
+			sire<-NA
+			}
+	}else{
+		dam<-row['dam']
+		sire<-row['sire']
+	}
+	return <- c(dam, sire)
+}
+
+
+ped[,c('dam','sire')]<-t(apply(ped,1,assign_joint_col_parents))
+
+##############################
+#                            #
+#      Marginal COLONY       #
+#   probability threshold    #
+#                            #
+##############################
+
+#Add Marginal COLONY parents above the threshold.
+
+#Add the marginal COLONY probabilities to ped.
+ped$dam_col_prob <-ped_mar_col$dam_prob[match(ped$id, ped_mar_col$id)]
+ped$sire_col_prob <-ped_mar_col$sire_prob[match(ped$id, ped_mar_col$id)]
+
+assign_marginal_parents_col<-function(row){
+	#If the individual alread has a dam, keep it.
+	if(!is.na(row['dam'])){
+		dam<-row['dam']
+	#If they do not have an assigned dam and the marginal dam probability exceeds the threshold, set dam to the marginal dam.
+	}else if(row['dam_prob'] >= threshold &
+	!is.na(row['dam_prob'])){
+		dam<- as.character(ped_mar_col[ped_mar_col$id == row['id'],'dam'])
+	}else{#Otherwise, no dam is assigned.
+		dam<-NA
+	}
+
+	#If the individual alread has a sire, keep it.
+	if(!is.na(row['sire'])){
+		sire<-row['sire']
+	#If they do not have an assigned sire and the marginal sire probability exceeds the threshold, set sire to the marginal sire.
+	}else if(row['sire_prob'] >= threshold &
+	!is.na(row['sire_prob'])){
+		sire<- as.character(ped_mar_col[ped_mar_col$id == row['id'],'sire'])
+	}else{#Otherwise, no sire is assigned.
+		sire<-NA
+	}
+	
+	return(c(dam, sire))
+}
+
+ped[,c("dam", "sire")] <- t(apply(ped, 1, assign_marginal_parents_col))
+
+################################
+#                              #
+#    Assign parentage using    #
+#        COLONY sibships       #
+#                              #
+################################
+
+#The COLONY sibships allow us to assign parents to non-offspring in the MasterBayes, i.e. founders and immigrants.
+#It also allows us to assign dummy parents where the parents were not sampled.
+!must be done after the joint and marginal colony are added!
+#If a single parent is NA, check in fs_consitancy to check that the sibship is consistant with MasterBayes. Note that fs_consistancy only includes confident COLONY sibships.
+#and that there are more than one member of the sibship, otherwise we might accidentally give individuals low confidence parent.
+#Then look up the individual in colconfig and get their parent. This should only be a dummy parent for offspring as confident parents should already have been assigned.
+
+is.na(ped$dam)
+
+fs_consistancy$mb_consistant[match(ped$fsindex, fs_consistancy$fsindex)]
+
+colconfig$MotherID[match(ped$id, colconfig$OffspringID)]
+
+#####################
+#                   #
+#       Checks      #
+#                   #
+#####################
+
+#Check no duplicates in the colony pedigrees.
+
+joint_duplicates<-sum(duplicated(ped_joint_col$id))
+marginal_duplicates<-sum(duplicated(ped_mar_col$id))
+
+if(joint_duplicates>0){
+	warning(paste(joint_duplicates, " offspring duplicated in the colony joint pedigree 'ped_joint_col'. Returned offspring may not be the most probable."))
+}
+if(marginal_duplicates>0){
+	warning(paste(marginal_duplicates, " offspring duplicated in the colony marginal pedigree 'ped_mar_col'. Returned offspring may not be the most probable."))
+}
+
+#colconfig should be consistant with the definition of full siblings.
+#Add full sibling indexes to colconfig
+colconfig$fsindex<-fsindex$index[match(colconfig$OffspringID, fsindex$id)]
+
+colconfig$fs_iprob<-fsindex$iprob[match(colconfig$OffspringID, fsindex$id)]
+
+#
+col_fs_check <- summarise(group_by(filter(colconfig, fs_iprob>threshold), fsindex),
+	fs_iprob = unique(fs_iprob),
+	#Number of unique MasterBayes assigned parent pairs.
+	n_MB_pp = length(unique(paste(MotherID,FatherID))))
+
+col_fs_check$consistant <- col_fs_check$n_MB_pp == 1
+
+internally_inconsistant_col_fs <- col_fs_check[!col_fs_check$consistant,]
+
+if(nrow(internally_inconsistant_col_fs) > 0){
+	warning("Confident sibships from 'colfsf' are not consistent with 'colconfig'.")
+	print(internally_inconsistant_col_fs)
+}
 
 #####################
 #                   #
@@ -273,5 +434,20 @@ plot(rep(1:181,3),c(jointprob,marprobd,marprobs),col=rep(1:3,each=181))
 
 #Check that all accepted full sibs have the same parents.
 
-
 #Deal with Unsampled parents in the MB pedigree
+
+#Add in the unsampled parents where appropriate.
+
+#Final pedigree should record assignment type as well as that particular probability
+
+#Include the probabilty threshold for full sibships
+
+#Why do not all pups appear in the colony file? Is it because they weren't included to speed up assignments?
+
+#What happens when the colony assignment is NA or #/*
+
+#Check how well the colony parent functions work when there is a range of parent types, at time of writing almost all parents are accurately assigned my masterbayes.
+
+#Possibly change ped so that it contains all of the accepted assignments but in a separate column for each assignment type. Then an apply function could accept the highest priority assignment type MB_joint>MB_marginal>COL_joint>COL_marginal>COL_sibship.
+
+#New immigrants are in the COLONY assignment (for sibships) but not in the MasterBayes run, ensure they are not accidentally ommited.

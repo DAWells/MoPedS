@@ -98,7 +98,7 @@ var5<-expression(varPed(x="sq_scaled_age", gender="Female"))
 var6<-expression(varPed(x="sq_scaled_age", gender="Male", lag=c(-60,-60)))
 
 PdP<-PdataPed(list(dres1,dres2,dres3,dres4, sres2,sres3,sres4, var1, var2, var3, var4, var5, var6), data=pdata, USdam=T, USsire=T, timevar=pdata$datesalive)
-saveRDS(PdP,"PdataPed_object.RDS")
+#saveRDS(PdP,"PdataPed_object.RDS")
 
 ped_beta<-c(6,4,0.4,0.9,-0.02,-0.03)
 simped<-simpedigree(PdP, beta=ped_beta, nUS=c(10,10))
@@ -121,6 +121,12 @@ current_error<-error[current_gen[2:87][rep(c(T,F),43)],]
 simgen<-simgenotypes(A=extractA(gendata[,current_gen]), E1=current_error$E1, E2=current_error$E2, ped=simped$ped, prop.missing=0)
 
 #saveRDS(simgen, "simulated_genotypes.RDS")
+
+#Save the pedigree and genotype data so that it is easy to fit into mopeds 3 and 4.
+#Convert the genotype to two column format
+#include columns for the old loci.
+
+
 
 ########################
 #                      #
@@ -218,4 +224,6 @@ hist(modeP(simmod$P)$prob[correct_parents],breaks=seq(0,1,0.1), main="Assignment
 
 #Should probably include a prior for the number of unsampled males and females
 
-#the simulated pedigree only has one male assigned as all parents
+#save the pedigree and genotype data so that it is easy to fit into mopeds 3 and 4.
+#Convert the genotype to two column format
+#include columns for the old loci.

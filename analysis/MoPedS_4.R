@@ -41,6 +41,14 @@ PdP<-readRDS("PdataPed_object.RDS")
 #Xlist is the design matrix used by MasterBayes and it includes the potential parents of each offspring. These parent IDs are stored as integers which refer to an ID in Xlist$id. Integers greater than the length of Xlist$id return NA and indicates an unsampled parent.
 Xlist<-getXlist(PdP)
 
+#Get all the pup ids. The name of each item in X is an integer refering to an individual in Xlist$id, and within that item is all the potential parents of the individual.
+pup_id<-Xlist$id[as.numeric(names(Xlist$X))]
+
+#Add to this list of pup id the new_immigrants because COLONY takes them as offspring to assign sibships.
+new_immigrants<-as.character(filter(pdata, new_immigrant==T)$id)
+
+pup_id<-c(pup_id, new_immigrants)
+
 #Function to get the id of potential parents
 get_potential_parents<-function(offspring,parent){
 	dams<-Xlist$id[offspring$restdam.id]
@@ -61,6 +69,9 @@ get_potential_parents<-function(offspring,parent){
 
 pdams_list<-lapply(Xlist$X,get_potential_parents,parent="dam")
 
+#Extend pdams_list with NAs by the length of new_immigrants .
+pdams_list <- c(pdams_list, as.list(rep(NA, length(new_immigrants))))
+
 #Make all lists of potential dams the same length. To do this we get the highest number of potential dams.
 max_dams<-max(unlist(lapply(pdams_list,length)))
 #Function to extend each list.
@@ -75,8 +86,7 @@ pdams_evenlist<-lapply(pdams_list,extend_list_dam)
 pdams_df<-do.call(rbind.data.frame,pdams_evenlist)
 names(pdams_df)<-NULL
 
-#Add the pup's id. The name of each item in X is an integer refering to an individual in Xlist$id, and within that item is all the potential parents of the individual.
-pup_id<-Xlist$id[as.numeric(names(Xlist$X))]
+#Create a dataframe with pup/immigrant id in the first column and subsequent columns filled with potential dams.
 pdams<-cbind(pup_id,pdams_df)
 
 
@@ -85,6 +95,9 @@ pdams<-cbind(pup_id,pdams_df)
 #################
 
 psires_list<-lapply(Xlist$X,get_potential_parents,parent="sire")
+
+#Extend psires_list with NAs by the length of new_immigrants .
+psires_list <- c(psires_list, as.list(rep(NA, length(new_immigrants))))
 
 #Make all lists of potential sires the same length. To do this we get the highest number of potential sires.
 max_sires<-max(unlist(lapply(psires_list,length)))
@@ -99,6 +112,7 @@ psires_evenlist<-lapply(psires_list,extend_list_sire)
 #Convert this to a data.frame
 psires_df<-do.call(rbind.data.frame,psires_evenlist)
 names(psires_df)<-NULL
+
 #Add the pup's id.
 psires<-cbind(pup_id,psires_df)
 
@@ -257,10 +271,10 @@ gendata[match(rownames(consensus_genotypes), gendata$id),2:ncol(gendata)]<-conse
 #                            #
 ##############################
 
-#We use COLONY to place offspring and immigrants to the population, in contrast to MasterBayes which only places offspring in the pedigree. Therefore this "offspring" dataframe must also include the immigrants that we wish to assign to sibship groups.
-#immigrants must also be added to pup_id.
+#We use COLONY to assign parentage to offspring and immigrants, in contrast MasterBayes only assigns parentage to offspring. Therefore this "offspring" dataframe must also include the new_immigrants that we wish to assign to sibship groups.
+#new_immigrants must also be added to pup_id.
 
-offspring<-filter(pdata,offspring==1 | immigrant==1)
+offspring<-filter(pdata,offspring==1 | new_immigrant==T)
 offspring_gen<-filter(gendata, id %in% offspring$id)
 offspring_gen_string<-apply(offspring_gen, 1, paste, collapse=", ")
 
@@ -392,7 +406,7 @@ number_of_sire_exclusions,
 #"! Row 42) Excluded paternity, first is the offspring then all of the males which cannot be their sire are listed.",
 sire_exclusion_of_genotyped_offspring,
 number_of_dam_exclusions,
-#"! Row 44) Excluded maternity, first is the offspring then all of the females which cannot be their sire are listed.",
+#"! Row 44) Excluded maternity, first is the offspring then all of the females which cannot be their dam are listed.",
 dam_exclusion_of_genotyped_offspring,
 "0     ! Row 45) Number of offspring with known excluded Paternal sibships",
 "0     ! Row 47) Number of offspring with known excluded Maternal sibships")
@@ -422,7 +436,7 @@ writeLines(input_text,input_file_name)
 #Open terminal or command depending on your opporating system and navigate to the folder containing Colony2p.exe and the .dat file. This can be done using cd and the absolute folder location. E.g.
 # cd "/Applications/colony2.mac"
 
-#Then, in the terminal window run the start command. The exact start comand depends on who you intend to run it, serial or parallel, and your opporating system. The colony user guide gives specific details and the readme.pdf which accompanied your colony download will have the specific command for your installation.
+#Then, in the terminal window run the start command. The exact start comand depends on how you intend to run it, serial or parallel, and your opporating system. The colony user guide gives specific details and the readme.pdf which accompanied your colony download will have the specific command for your installation.
 
 #On mac
 #./colony2s.out IFN:colony_test_colony_inputs.dat
@@ -440,6 +454,8 @@ writeLines(input_text,input_file_name)
 #Check that the number of offspring matches the number of offspring genotype records
 
 #same for dams and sires.
+
+#Ensure that alleles are listed small large as output by genemapper
 
 
 ############################
