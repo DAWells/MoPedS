@@ -1,0 +1,4 @@
+0, 20      ! Row 33) Number of offspring with known Paternity, maximum number of mismatches allowed.
+0, 20      ! Row 35) Number of offspring with known Maternity, maximum number of mismatches allowed.
+0          ! Row 37) Number of known Paternal sibships.
+0          ! Row 39) Number of known Maternal sibships.

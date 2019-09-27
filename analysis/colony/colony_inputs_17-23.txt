@@ -1,0 +1,7 @@
+1         ! Row 17) Number of runs.
+2         ! Row 18) 1/2/3/4 = Short/Medium/Long/VeryLong run.
+0         ! Row 19) 0/1 = Monitor method by Iterate#/Time in second.
+10000     ! Row 20) Monitor interval in Iterate# / in seconds.
+0         ! Row 21) 0/1 = DOS/Windows version.
+1         ! Row 22) 0/1/2 = Pair-Likelihood-Score(PLS)/Full-Likelihood(FL)/FL-PLS-combined(FPLS) method.
+1         ! Row 23) 0/1/2/3 = Low/Medium/High/VeryHigh precision.

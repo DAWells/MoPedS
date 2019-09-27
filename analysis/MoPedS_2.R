@@ -329,7 +329,7 @@ pdata$new_immigrant<-apply(pdata, 1, get_new_immigrants)
 
 #$age_space is scaled based on sex. Mathematically this means: (age-mean(age))/sd(age). A separate mean and standard deviation are calculated for males and females.
 #Reminder, age is in days
-#Imigrants to the population have $age_space = NA so we replace this with the average for that sex. However, for subsequent measures we know that they have continuned to age so that information is included. Note though that this was not the case for Jenny's original pedigree or David's extension 1, imigrant's age was fixed as the average.
+#Imigrants to the population have $age_space = NA so we replace this with the average for that sex. However, for subsequent measures we know that they have continuned to age so that information is included. Note though that this was not the case for Jenny's original pedigree or David's extension 1 as imigrant's age was fixed as the average.
 
 av_male_age<-mean(pdata$age_space[pdata$sex=="Male"],na.rm=T)
 av_female_age<-mean(pdata$age_space[pdata$sex=="Female"],na.rm=T)
