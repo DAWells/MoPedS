@@ -1,0 +1,9 @@
+0         ! Row 6) 0/1 = Not updating/updating allele frequency.
+2         ! Row 7) 2/1 = Dioecious/Monoecious species.
+1         ! Row 8) 0/1 = Inbreeding absent/present.
+0         ! Row 9) 0/1 = Diploid species/HaploDiploid species.
+0  0      ! Row 10) 0/1 = Polygamy/Monogamy for males & females.
+0         ! Row 11) 0/1 = Clone inference = No/Yes.
+0         ! Row 12) 0/1 = Scale full sibship = No/Yes.
+1 1.5 1.5 ! Row 13) 0/1/2/3/4 = No/Weak/Medium/Strong sibship prior; 4=Optimal sibship prior for Ne. The 2nd 2 numbers are the average paternal and maternal sibship sizes.
+1         ! Row 14) 0/1 = Unknown/Known population allele frequency.

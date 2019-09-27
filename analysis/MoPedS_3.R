@@ -32,6 +32,11 @@ error<-error[order(error$locus),]
 print("Please check that the names of loci in gendata and error correctly match up")
 cbind(names(gendata)[2:87], as.character(rep(error$locus,each=2)))
 
+!!!!! only Male and Female should be sexes. P must therefore be changed to NA.
+#levels(pdata$sex)[c(2,4)]<-NA
+levels(pdata$sex)[3]<-NA
+
+
 ########################
 #                      #
 #    Create model      #
@@ -158,3 +163,5 @@ dim(modt$P)
 #Allow the rate of unsampled dams and sires to vary across time.
 
 #By specifiying jointP = FALSE to MCMCped mothers are assigned first and then fathers are assigned which can speed up comupation.
+
+#Allow the rate of unsampled dams and sires to vary across time.

@@ -15,7 +15,8 @@ error$E2[error$E2==0]<-0.005
 
 #microsatellite data
 gendata<-read.csv("rawdata/BMRP_Genotype_data_July_2016.csv")
-
+#Or load the simulated genotypedata if checking simulations
+#gendata<-read.csv("simulated_gendata_2col.csv")
 
 #Alphabetically reorder the rows of error and columns of gendata so that they match.
 gendata<-gendata[,c(1,(1+order(names(gendata)[2:87])))]
@@ -227,6 +228,7 @@ duplicated_gen<-duplicated_gen[order(duplicated_gen$id),]
 allele1<-duplicated_gen[,seq(2, ncol(duplicated_gen), 2)]
 allele2<-duplicated_gen[,seq(3, ncol(duplicated_gen), 2)]
 
+#NOTE, this check will throw an error if there are no duplicates.
 if(0 < sum(!(allele1<=allele2))){
 	print("The alleles are not ordered small to large within the loci. Therefore the function generate_consensus_genotypes will not function correctly. Please ensure that each individual has only one genotype record for COLONY by creating a new gendata file to feed to MoPedS_4.R to create a COLONY input file.")
 }
@@ -270,6 +272,9 @@ gendata[match(rownames(consensus_genotypes), gendata$id),2:ncol(gendata)]<-conse
 #  Offspring and candidates  #
 #                            #
 ##############################
+
+#For COLONY missing genotypes are 0.
+gendata[is.na(gendata)]<-0
 
 #We use COLONY to assign parentage to offspring and immigrants, in contrast MasterBayes only assigns parentage to offspring. Therefore this "offspring" dataframe must also include the new_immigrants that we wish to assign to sibship groups.
 #new_immigrants must also be added to pup_id.
@@ -413,6 +418,8 @@ dam_exclusion_of_genotyped_offspring,
 
 input_file_name<-paste(project_name, "_colony_inputs.dat",sep="")
 writeLines(input_text,input_file_name)
+
+#You must copy this input_text into the folder containing your colony installation.
 
 ##########################
 #                        #

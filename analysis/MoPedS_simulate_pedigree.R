@@ -53,7 +53,7 @@ cbind(names(gendata)[2:87], as.character(rep(error$locus,each=2)))
 #Only look at 2015 as examples for brevity.
 #pdata<-pdata[format.Date(pdata$date,"%Y") %in% c(2015,2014),]
 
-!!!!! only Male and Female should be sexes.
+!!!!! only Male and Female should be sexes. P must therefore be changed to NA.
 #levels(pdata$sex)[c(2,4)]<-NA
 levels(pdata$sex)[3]<-NA
 
@@ -103,6 +103,26 @@ PdP<-PdataPed(list(dres1,dres2,dres3,dres4, sres2,sres3,sres4, var1, var2, var3,
 ped_beta<-c(6,4,0.4,0.9,-0.02,-0.03)
 simped<-simpedigree(PdP, beta=ped_beta, nUS=c(10,10))
 
+#To include imigrants, you must edit the pedigree
+!THIS is trial code to check the scripts work. Do not use in actual analyses!!!
+
+#immigrnats
+I <-filter(PdP$data,new_immigrant==T)$id
+
+#Make several immigrants full siblings
+simped$ped[simped$ped[,1]%in%I[1:4],2]<-"Fakedam1"
+simped$ped[simped$ped[,1]%in%I[1:4],3]<-"Fakesire1"
+
+#Make some immigrants full sibs with real offspring.
+#Must check the simped and find an offspring with two assigned parents and use those parents here.
+simped$ped[simped$ped[,1]%in%I[5:6],2]<-"BF484"
+simped$ped[simped$ped[,1]%in%I[5:6],3]<-"BM500"
+
+#Make some immigrants half sibs with real offspring, they should not be assigned
+simped$ped[simped$ped[,1]%in%I[7],2]<-"DF208"
+simped$ped[simped$ped[,1]%in%I[8],3]<-"HM216"
+
+
 #saveRDS(simped,"true_simulated_pedigree.RDS")
 ################################
 #                              #
@@ -113,19 +133,49 @@ simped<-simpedigree(PdP, beta=ped_beta, nUS=c(10,10))
 #When simulating genotypes do remember that 8 loci are no longer genotyped. FS50, MON28, Mon30, AHT130, Ag8, hic1.95, fs41,ss7-1, fs46, fs48.
 
 #Simulate using the complete set of loci.
-#simgen<-simgenotypes(A=extractA(gendata), E1=error$E1, E2=error$E2, ped=simped$ped, prop.missing=0)
+simgen<-simgenotypes(A=extractA(gendata), E1=error$E1, E2=error$E2, ped=simped$ped, prop.missing=0)
 
 #Simulate using only the current set of 35 loci.
-current_gen<-!names(gendata) %in% c("fs46", "fs46.1","fs48","fs48.1","fs50","fs50.1","AHT130a","AHT130b","Ag8a","Ag8b","Ss7.1a","ss7.1b","fs41", "fs41.1", "hic.1.95", "hic.1.95.1")
-current_error<-error[current_gen[2:87][rep(c(T,F),43)],]
-simgen<-simgenotypes(A=extractA(gendata[,current_gen]), E1=current_error$E1, E2=current_error$E2, ped=simped$ped, prop.missing=0)
+#current_gen<-!names(gendata) %in% c("fs46", "fs46.1","fs48","fs48.1","fs50","fs50.1","AHT130a","AHT130b","Ag8a","Ag8b","Ss7.1a","ss7.1b","fs41", "fs41.1", "hic.1.95", "hic.1.95.1")
+#error<-error[current_gen[2:87][rep(c(T,F),43)],]
+#simgen<-simgenotypes(A=extractA(gendata[,current_gen]), E1=error$E1, E2=error$E2, ped=simped$ped, prop.missing=0)
+
 
 #saveRDS(simgen, "simulated_genotypes.RDS")
+
 
 #Save the pedigree and genotype data so that it is easy to fit into mopeds 3 and 4.
 #Convert the genotype to two column format
 #include columns for the old loci.
+gendata_2col<-data.frame(id=simgen$id)
 
+reformat_genotype <- function(genotype){
+	#Convert to string
+	genotypeS <- as.character(genotype)
+	#split on the /
+	split_genotype <- strsplit(genotypeS, "/")
+	a1<-split_genotype[[1]][1]
+	a2<-split_genotype[[1]][2]
+	
+	return(c(a1,a2))
+}
+
+#Apply this function to each locus
+for(i in 1:length(simgen$Gobs)){
+
+	locus <- names(simgen$Gobs[i])
+	
+	#Evens are allele 1, odds are allele 2
+	locus_genotypes <- unlist(lapply(simgen$Gobs[[i]], reformat_genotype))
+
+#Extract the 2 alleles separately and add them to the gendata_2col
+	gendata_2col[,substr(locus,1,nchar(locus)-1)]<-locus_genotypes[seq(1,2*length(simgen$id),2)]
+
+	gendata_2col[,locus]<-locus_genotypes[seq(2,2*length(simgen$id),2)]
+}
+
+#Save 2 column genotypes.
+#write.csv(gendata_2col, "simulated_gendata_2col.csv", row.names=F)
 
 
 ########################
@@ -136,7 +186,7 @@ simgen<-simgenotypes(A=extractA(gendata[,current_gen]), E1=current_error$E1, E2=
 
 GdP<-GdataPed(G=simgen$Gobs, id=simgen$id, perlocus=T)
 
-sP<-startPed(estG=F, E1=current_error$E1, E2=current_error$E2)
+sP<-startPed(estG=F, E1=error$E1, E2=error$E2)
 pP<-priorPed(beta=list(mu=c(0,0,0,0,0,0), sigma=diag(c(rep(1+pi^(2/3),6)))))
 tP<-tunePed(USsire=0.03, USdam=0.03, beta=0.3)
 
