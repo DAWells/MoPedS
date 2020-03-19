@@ -109,10 +109,8 @@ tP<-tunePed(USsire=0.03, USdam=0.03, beta=0.3)
 #                      #
 ########################
 
-#temporary short fit data
-
-
-
+mod <- MCMCped(PdP,GdP, sP=sP, pP=pP, tP=tP, write_postP="JOINT", DSapprox=TRUE, jointP=FALSE, 
+            nitt=5031000, thin=13000, burnin=500000, verbose=T)
 
 
 ########################
@@ -121,9 +119,9 @@ tP<-tunePed(USsire=0.03, USdam=0.03, beta=0.3)
 #                      #
 ########################
 
-modeP(modt$P)
+modeP(mod$P)
 'TM478'
-dim(modt$P)
+dim(mod$P)
 
 ########################
 #                      #
